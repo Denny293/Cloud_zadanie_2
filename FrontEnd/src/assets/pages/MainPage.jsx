@@ -1,97 +1,124 @@
+import { useNavigate } from "react-router-dom";
+
 export default function MainPage() {
+  const navigate = useNavigate();
+
   const destinations = [
     {
-      title: "Карпати",
-      text: "Гори, свіже повітря, затишні будиночки та маршрути для активного відпочинку.",
+      title: "Carpathians",
+      text: "Mountains, fresh air, cozy cottages and trails for active outdoor adventures.",
     },
     {
-      title: "Італія",
-      text: "Море, архітектура, атмосфера старих міст і справжня середземноморська кухня.",
+      title: "Italy",
+      text: "Sea, architecture, the atmosphere of old cities and authentic Mediterranean cuisine.",
     },
     {
-      title: "Балі",
-      text: "Тропічний релакс, теплий океан, зелені пейзажі та спокійний ритм життя.",
+      title: "Bali",
+      text: "Tropical relaxation, warm ocean, lush landscapes and a peaceful pace of life.",
     },
   ];
 
   const benefits = [
     {
-      title: "Готові тури",
-      text: "Підбираємо маршрути, проживання та переліт в одному рішенні.",
+      title: "Ready-made tours",
+      text: "We handle routes, accommodation and flights — all in one package.",
     },
     {
-      title: "Зручне планування",
-      text: "Прості умови бронювання та зрозуміла структура подорожі без хаосу.",
+      title: "Easy planning",
+      text: "Simple booking conditions and a clear trip structure with no hassle.",
     },
     {
-      title: "Підтримка 24/7",
-      text: "Допомагаємо до поїздки, під час подорожі та після повернення.",
+      title: "24/7 support",
+      text: "We help before the trip, during the journey and after you return.",
     },
   ];
+
+  function handleLogin() {
+    navigate("/auth", { state: { mode: "login" } });
+  }
+
+  function handleSignUp() {
+    navigate("/auth", { state: { mode: "signup" } });
+  }
+
+  function handleFindTour() {
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/tours");
+    } else {
+      navigate("/auth", { state: { mode: "login" } });
+    }
+  }
 
   return (
     <main className="main-page">
       <section className="hero">
         <header className="header container">
-          <div className="logo">СРАКА - ЛОГО</div>
+          <div className="logo">TravelFlow</div>
 
           <nav className="nav">
-            <a href="#destinations">Напрямки</a>
-            <a href="#about">Про нас</a>
-            <a href="#contact">Контакти</a>
+            <a href="#destinations">Destinations</a>
+            <a href="#about">About</a>
+            <a href="#contact">Contact</a>
           </nav>
 
           <div className="header-actions">
-            <button className="btn btn-secondary">Login</button>
-            <button className="btn btn-primary">Sign Up</button>
+            <button className="btn btn-secondary" onClick={handleLogin}>
+              Login
+            </button>
+            <button className="btn btn-primary" onClick={handleSignUp}>
+              Sign Up
+            </button>
           </div>
         </header>
 
         <div className="hero-content container">
           <div className="hero-text">
-            <p className="hero-badge">Туристичне агентство</p>
-            <h1>Подорожі, які хочеться згадувати ще довго</h1>
+            <p className="hero-badge">Travel agency</p>
+            <h1>Trips you'll want to remember for a long time</h1>
             <p className="hero-description">
-              Відкрий для себе нові міста, гори, море та незабутні враження.
-              Ми допоможемо знайти подорож, яка дійсно підходить саме тобі.
+              Discover new cities, mountains, the sea and unforgettable experiences.
+              We'll help you find a journey that's truly right for you.
             </p>
 
             <div className="hero-buttons">
-              <button className="btn btn-primary">Обрати тур</button>
-              <button className="btn btn-outline">Дізнатись більше</button>
+              <button className="btn btn-primary" onClick={handleFindTour}>
+                Find a tour
+              </button>
+              <button className="btn btn-outline">Learn more</button>
             </div>
 
             <div className="hero-stats">
               <div className="stat-card">
                 <strong>250+</strong>
-                <span>успішних турів</span>
+                <span>successful tours</span>
               </div>
               <div className="stat-card">
                 <strong>40+</strong>
-                <span>напрямків</span>
+                <span>destinations</span>
               </div>
               <div className="stat-card">
                 <strong>24/7</strong>
-                <span>підтримка</span>
+                <span>support</span>
               </div>
             </div>
           </div>
 
           <div className="hero-visual">
             <div className="hero-card hero-card-main">
-              <p>Найкращі маршрути</p>
-              <h3>Літо 2026</h3>
-              <span>Море, гори, екскурсії та city-break</span>
+              <p>Best routes</p>
+              <h3>Summer 2026</h3>
+              <span>Sea, mountains, sightseeing and city breaks</span>
             </div>
 
             <div className="hero-card hero-card-small top">
-              <strong>Знижки</strong>
-              <span>до -20% на раннє бронювання</span>
+              <strong>Discounts</strong>
+              <span>up to -20% for early booking</span>
             </div>
 
             <div className="hero-card hero-card-small bottom">
-              <strong>Комфорт</strong>
-              <span>Підбір туру за бюджетом і стилем відпочинку</span>
+              <strong>Comfort</strong>
+              <span>Tours matched to your budget and travel style</span>
             </div>
           </div>
         </div>
@@ -99,8 +126,8 @@ export default function MainPage() {
 
       <section className="benefits section container" id="about">
         <div className="section-heading">
-          <p className="section-label">Чому саме ми</p>
-          <h2>Робимо подорожі простішими та приємнішими</h2>
+          <p className="section-label">Why choose us</p>
+          <h2>We make travel simpler and more enjoyable</h2>
         </div>
 
         <div className="benefits-grid">
@@ -115,8 +142,8 @@ export default function MainPage() {
 
       <section className="destinations section container" id="destinations">
         <div className="section-heading">
-          <p className="section-label">Популярні напрямки</p>
-          <h2>Обери місце, куди хочеться вже зараз</h2>
+          <p className="section-label">Popular destinations</p>
+          <h2>Pick a place you want to visit right now</h2>
         </div>
 
         <div className="destinations-grid">
@@ -126,7 +153,7 @@ export default function MainPage() {
               <div className="destination-content">
                 <h3>{place.title}</h3>
                 <p>{place.text}</p>
-                <button className="link-button">Переглянути</button>
+                <button className="link-button">Explore</button>
               </div>
             </article>
           ))}
@@ -136,17 +163,20 @@ export default function MainPage() {
       <section className="cta section container" id="contact">
         <div className="cta-box">
           <div>
-            <p className="section-label">Готовий до нових вражень?</p>
-            <h2>Знайдемо подорож, яка реально тобі підійде</h2>
+            <p className="section-label">Ready for new experiences?</p>
+            <h2>We'll find a trip that truly suits you</h2>
             <p className="cta-text">
-              Напиши нам, і ми підберемо варіант під твій бюджет, дати та
-              побажання.
+              Tell us your budget, dates and preferences — we'll take care of the rest.
             </p>
           </div>
 
           <div className="cta-actions">
-            <button className="btn btn-primary">Залишити заявку</button>
-            <button className="btn btn-secondary">Зв’язатися</button>
+            <button className="btn btn-primary" onClick={handleFindTour}>
+              Find a trip
+            </button>
+            <button className="btn btn-secondary" onClick={handleLogin}>
+              Sign in
+            </button>
           </div>
         </div>
       </section>

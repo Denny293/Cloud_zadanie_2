@@ -1,106 +1,17 @@
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ToursPage.css";
 
-const TOURS = [
-  {
-    id: 1,
-    title: "Сонячна Барселона",
-    country: "Іспанія",
-    city: "Барселона",
-    price: 520,
-    nights: 7,
-    month: "2026-06",
-    rating: 4.8,
-    tags: ["море", "місто", "екскурсії"],
-    description:
-      "Ідеальний варіант для тих, хто хоче поєднати пляжний відпочинок і красиву архітектуру.",
-  },
-  {
-    id: 2,
-    title: "Римські канікули",
-    country: "Італія",
-    city: "Рим",
-    price: 610,
-    nights: 6,
-    month: "2026-07",
-    rating: 4.9,
-    tags: ["історія", "місто", "їжа"],
-    description:
-      "Старовинні вулиці, атмосферні кафе, музеї та насичена культурна програма.",
-  },
-  {
-    id: 3,
-    title: "Мальдівський релакс",
-    country: "Мальдіви",
-    city: "Мале",
-    price: 1450,
-    nights: 8,
-    month: "2026-08",
-    rating: 5.0,
-    tags: ["океан", "люкс", "релакс"],
-    description:
-      "Теплий океан, білі пляжі та спокійний відпочинок для повного перезавантаження.",
-  },
-  {
-    id: 4,
-    title: "Гірські Карпати",
-    country: "Україна",
-    city: "Буковель",
-    price: 280,
-    nights: 5,
-    month: "2026-06",
-    rating: 4.7,
-    tags: ["гори", "природа", "активність"],
-    description:
-      "Свіже повітря, неймовірні краєвиди та комфортний відпочинок серед природи.",
-  },
-  {
-    id: 5,
-    title: "Паризький вікенд",
-    country: "Франція",
-    city: "Париж",
-    price: 690,
-    nights: 4,
-    month: "2026-09",
-    rating: 4.8,
-    tags: ["романтика", "місто", "архітектура"],
-    description:
-      "Швидка, красива і дуже атмосферна подорож для тих, хто любить великі міста.",
-  },
-  {
-    id: 6,
-    title: "Лісабон і океан",
-    country: "Португалія",
-    city: "Лісабон",
-    price: 560,
-    nights: 7,
-    month: "2026-07",
-    rating: 4.8,
-    tags: ["океан", "місто", "сонце"],
-    description:
-      "Стильне місто, океанський бриз і чудовий вибір для літньої подорожі.",
-  },
-  {
-    id: 7,
-    title: "Афіни + море",
-    country: "Греція",
-    city: "Афіни",
-    price: 480,
-    nights: 7,
-    month: "2026-06",
-    rating: 4.6,
-    tags: ["море", "історія", "сонце"],
-    description:
-      "Гарний баланс між пляжним відпочинком, античною історією та легкою атмосферою.",
-  },
-];
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+function getToken() {
+  return localStorage.getItem("token");
+}
 
 function getSavedUser() {
   try {
-    const rawUser = localStorage.getItem("user");
-    if (!rawUser) return null;
-    return JSON.parse(rawUser);
+    const raw = localStorage.getItem("user");
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
@@ -110,16 +21,42 @@ export default function ToursPage() {
   const navigate = useNavigate();
   const savedUser = getSavedUser();
 
-  const [favorites, setFavorites] = useState([]);
-  const [prompt, setPrompt] = useState("Хочу поїхати в Іспанію на 7 днів");
-  const [submittedPrompt, setSubmittedPrompt] = useState(
-    "Хочу поїхати в Іспанію на 7 днів"
-  );
+  // AI search form state
+  const [destination, setDestination] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [budget, setBudget] = useState("");
+  const [preferences, setPreferences] = useState("");
 
-  const [destination, setDestination] = useState("all");
-  const [date, setDate] = useState("");
-  const [price, setPrice] = useState("all");
-  const [duration, setDuration] = useState("all");
+  // Results state
+  const [tours, setTours] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [searched, setSearched] = useState(false);
+
+  // Favorites state (trip IDs saved in DB)
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
+
+  // On mount — load saved trips to know which are favorited
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
+
+  async function fetchFavorites() {
+    try {
+      const res = await fetch(`${API_URL}/trips`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const favIds = new Set(
+        data.filter((t) => t.favorites).map((t) => t.id)
+      );
+      setFavoriteIds(favIds);
+    } catch {
+      // silently ignore
+    }
+  }
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -127,68 +64,112 @@ export default function ToursPage() {
     navigate("/");
   }
 
-  function toggleFavorite(id) {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  }
-
-  function handleSearch(e) {
+  async function handleSearch(e) {
     e.preventDefault();
-    setSubmittedPrompt(prompt.trim() || "Підбери мені тур");
+    setError("");
+    setLoading(true);
+    setSearched(true);
+    setTours([]);
+
+    // Build prompt from form fields
+    const promptParts = [];
+    if (destination) promptParts.push(`destination: ${destination}`);
+    if (startDate) promptParts.push(`start date: ${startDate}`);
+    if (endDate) promptParts.push(`end date: ${endDate}`);
+    if (budget) promptParts.push(`budget: ${budget} EUR`);
+    if (preferences) promptParts.push(`preferences: ${preferences}`);
+
+    const prompt =
+      promptParts.length > 0
+        ? promptParts.join(", ")
+        : "Find me interesting random trips";
+
+    try {
+      const res = await fetch(`${API_URL}/ai/generate-trip`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          prompt,
+          preferences: {
+            destination: destination || null,
+            startDate: startDate || null,
+            endDate: endDate || null,
+            budget: budget ? Number(budget) : null,
+            wishes: preferences || null,
+          },
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "AI service error. Please try again.");
+        return;
+      }
+
+      // Expect data.result to be array of trips or { trips: [] }
+      const result = data.result;
+      const tripList = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.trips)
+        ? result.trips
+        : [];
+
+      setTours(tripList);
+    } catch {
+      setError("Could not connect to server.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const recommendations = useMemo(() => {
-    let result = [...TOURS];
-
-    const query = submittedPrompt.toLowerCase().trim();
-
-    if (query) {
-      result = result.filter((tour) => {
-        const text = `
-          ${tour.title}
-          ${tour.country}
-          ${tour.city}
-          ${tour.description}
-          ${tour.tags.join(" ")}
-        `
-          .toLowerCase()
-          .trim();
-
-        return text.includes(query.split(" ")[0]) || text.includes(query);
+  async function handleSaveTrip(tour) {
+    try {
+      const res = await fetch(`${API_URL}/trips`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          start: tour.start || "Unknown",
+          destination: tour.destination,
+          startDate: tour.startDate,
+          finishDate: tour.finishDate,
+          price: tour.price,
+          description: tour.description || "",
+          flightLink: tour.flightLink || null,
+          stayLink: tour.stayLink || null,
+        }),
       });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Could not save trip.");
+        return;
+      }
+
+      // Mark as favorite immediately after saving
+      const newTripId = data.trip.id;
+      await fetch(`${API_URL}/trips/${newTripId}/favorite`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+
+      setFavoriteIds((prev) => new Set([...prev, newTripId]));
+      alert("Trip saved to favorites!");
+    } catch {
+      alert("Could not connect to server.");
     }
+  }
 
-    if (destination !== "all") {
-      result = result.filter((tour) => tour.country === destination);
-    }
-
-    if (date) {
-      result = result.filter((tour) => tour.month === date);
-    }
-
-    if (price !== "all") {
-      if (price === "cheap") result = result.filter((tour) => tour.price < 400);
-      if (price === "mid")
-        result = result.filter((tour) => tour.price >= 400 && tour.price <= 700);
-      if (price === "high") result = result.filter((tour) => tour.price > 700);
-    }
-
-    if (duration !== "all") {
-      if (duration === "short") result = result.filter((tour) => tour.nights <= 4);
-      if (duration === "week")
-        result = result.filter((tour) => tour.nights >= 5 && tour.nights <= 7);
-      if (duration === "long") result = result.filter((tour) => tour.nights >= 8);
-    }
-
-    if (result.length === 0) {
-      result = [...TOURS];
-    }
-
-    return result.slice(0, 5);
-  }, [submittedPrompt, destination, date, price, duration]);
-
-  const email = savedUser?.email || "guest@gmail.com";
+  const email = savedUser
+    ? `${savedUser.firstname} ${savedUser.lastname}`
+    : "Guest";
 
   return (
     <section className="tours-page">
@@ -199,9 +180,12 @@ export default function ToursPage() {
           </div>
 
           <div className="tours-navbar-actions">
-            <button className="nav-icon-btn" type="button">
-              ♡
-              <span>{favorites.length}</span>
+            <button
+              className="nav-icon-btn"
+              type="button"
+              onClick={() => navigate("/favorites")}
+            >
+              ♡ <span>Favorites</span>
             </button>
 
             <div className="user-pill">
@@ -210,177 +194,193 @@ export default function ToursPage() {
             </div>
 
             <button className="logout-btn" type="button" onClick={handleLogout}>
-              Вийти
+              Sign Out
             </button>
           </div>
         </header>
 
+        {/* Search Section */}
         <section className="search-section">
           <div className="search-top">
-            <p className="section-badge">AI-пошук турів</p>
-            <h1>Знайди подорож під свій запит</h1>
+            <p className="section-badge">AI-powered search</p>
+            <h1>Find your perfect trip</h1>
             <p className="section-text">
-              Напиши, куди хочеш поїхати, а система покаже кілька готових
-              рекомендацій з урахуванням фільтрів.
+              Tell us where you want to go — AI will suggest the 5 best options for you.
+              Leave fields empty for random recommendations.
             </p>
           </div>
 
           <form className="search-panel" onSubmit={handleSearch}>
-            <div className="prompt-field">
-              <label htmlFor="prompt">Що ти шукаєш?</label>
-              <input
-                id="prompt"
-                type="text"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Наприклад: хочу в Іспанію біля моря на 7 днів"
-              />
-            </div>
-
             <div className="filters-grid">
               <div className="filter-field">
-                <label htmlFor="destination">Куди</label>
-                <select
+                <label htmlFor="destination">Destination</label>
+                <input
                   id="destination"
+                  type="text"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                >
-                  <option value="all">Будь-який напрямок</option>
-                  <option value="Іспанія">Іспанія</option>
-                  <option value="Італія">Італія</option>
-                  <option value="Греція">Греція</option>
-                  <option value="Франція">Франція</option>
-                  <option value="Португалія">Португалія</option>
-                  <option value="Україна">Україна</option>
-                  <option value="Мальдіви">Мальдіви</option>
-                </select>
-              </div>
-
-              <div className="filter-field">
-                <label htmlFor="date">Дата</label>
-                <input
-                  id="date"
-                  type="month"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  placeholder="e.g. Barcelona, Japan, anywhere..."
                 />
               </div>
 
               <div className="filter-field">
-                <label htmlFor="price">Ціна</label>
-                <select
-                  id="price"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                >
-                  <option value="all">Будь-яка</option>
-                  <option value="cheap">До 400€</option>
-                  <option value="mid">400€ – 700€</option>
-                  <option value="high">700€+</option>
-                </select>
+                <label htmlFor="startDate">Start date</label>
+                <input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
               </div>
 
               <div className="filter-field">
-                <label htmlFor="duration">Тривалість</label>
-                <select
-                  id="duration"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                >
-                  <option value="all">Будь-яка</option>
-                  <option value="short">До 4 днів</option>
-                  <option value="week">5–7 днів</option>
-                  <option value="long">8+ днів</option>
-                </select>
+                <label htmlFor="endDate">End date</label>
+                <input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-field">
+                <label htmlFor="budget">Max budget (€)</label>
+                <input
+                  id="budget"
+                  type="number"
+                  min="0"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  placeholder="e.g. 1000"
+                />
               </div>
             </div>
 
-            <button className="search-btn" type="submit">
-              Шукати подорож
+            <div className="prompt-field">
+              <label htmlFor="preferences">Wishes (optional)</label>
+              <input
+                id="preferences"
+                type="text"
+                value={preferences}
+                onChange={(e) => setPreferences(e.target.value)}
+                placeholder="e.g. beach, history, adventure, family-friendly..."
+              />
+            </div>
+
+            <button className="search-btn" type="submit" disabled={loading}>
+              {loading ? "Searching..." : "Find trips"}
             </button>
           </form>
         </section>
 
-        <section className="llm-preview">
-          <div className="bubble assistant-bubble">
-            Ось хороші варіанти, які я для тебе підібрав
-          </div>
-
-          <div className="bubble user-bubble">{submittedPrompt}</div>
-        </section>
-
-        <section className="results-section">
-          <div className="results-head">
-            <div>
-              <p className="section-badge">Результати</p>
-              <h2>5 рекомендованих турів</h2>
+        {/* Results Section */}
+        {searched && (
+          <section className="results-section">
+            <div className="results-head">
+              <div>
+                <p className="section-badge">Results</p>
+                <h2>Top 5 recommended trips</h2>
+              </div>
             </div>
 
-            <p className="results-caption">
-              Відповідь LLM можна буде пізніше підставити сюди з бекенду.
-            </p>
-          </div>
+            {error && (
+              <div className="error-banner">
+                <p>{error}</p>
+              </div>
+            )}
 
-          <div className="results-grid">
-            {recommendations.map((tour) => {
-              const isFavorite = favorites.includes(tour.id);
+            {loading && (
+              <div className="loading-state">
+                <p>AI is searching for the best trips for you...</p>
+              </div>
+            )}
 
-              return (
-                <article className="tour-card" key={tour.id}>
+            {!loading && !error && tours.length === 0 && (
+              <div className="empty-state">
+                <p>No trips found. Try different search criteria.</p>
+              </div>
+            )}
+
+            <div className="results-grid">
+              {tours.map((tour, index) => (
+                <article className="tour-card" key={index}>
                   <div className="tour-card-image" />
 
                   <div className="tour-card-content">
                     <div className="tour-card-top">
                       <div>
-                        <p className="tour-location">
-                          {tour.country} · {tour.city}
-                        </p>
-                        <h3>{tour.title}</h3>
+                        <p className="tour-location">{tour.destination}</p>
+                        <h3>{tour.title || tour.destination}</h3>
                       </div>
-
-                      <button
-                        type="button"
-                        className={`tour-favorite ${isFavorite ? "is-active" : ""}`}
-                        onClick={() => toggleFavorite(tour.id)}
-                      >
-                        {isFavorite ? "♥" : "♡"}
-                      </button>
                     </div>
 
                     <p className="tour-description">{tour.description}</p>
 
-                    <div className="tour-tags">
-                      {tour.tags.map((tag) => (
-                        <span key={tag}>{tag}</span>
-                      ))}
-                    </div>
+                    {tour.tags && (
+                      <div className="tour-tags">
+                        {tour.tags.map((tag) => (
+                          <span key={tag}>{tag}</span>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="tour-meta">
-                      <div>
-                        <strong>{tour.price}€</strong>
-                        <span>за людину</span>
-                      </div>
-
-                      <div>
-                        <strong>{tour.nights} ночей</strong>
-                        <span>{tour.month}</span>
-                      </div>
-
-                      <div>
-                        <strong>{tour.rating}</strong>
-                        <span>рейтинг</span>
-                      </div>
+                      {tour.price && (
+                        <div>
+                          <strong>{tour.price}€</strong>
+                          <span>per person</span>
+                        </div>
+                      )}
+                      {tour.startDate && (
+                        <div>
+                          <strong>{tour.startDate}</strong>
+                          <span>start date</span>
+                        </div>
+                      )}
+                      {tour.finishDate && (
+                        <div>
+                          <strong>{tour.finishDate}</strong>
+                          <span>end date</span>
+                        </div>
+                      )}
                     </div>
 
-                    <button className="tour-btn" type="button">
-                      Переглянути тур
+                    <div className="tour-links">
+                      {tour.flightLink && (
+                        <a
+                          href={tour.flightLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="tour-link-btn"
+                        >
+                          ✈ Flights
+                        </a>
+                      )}
+                      {tour.stayLink && (
+                        <a
+                          href={tour.stayLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="tour-link-btn"
+                        >
+                          🏨 Hotels
+                        </a>
+                      )}
+                    </div>
+
+                    <button
+                      className="tour-btn"
+                      type="button"
+                      onClick={() => handleSaveTrip(tour)}
+                    >
+                      ♡ Save to Favorites
                     </button>
                   </div>
                 </article>
-              );
-            })}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </section>
   );
