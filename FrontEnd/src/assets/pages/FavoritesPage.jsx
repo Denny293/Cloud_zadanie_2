@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/ToursPage.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const PEXELS_KEY = import.meta.env.VITE_PEXELS_API_KEY;
 
 function getToken() {
   return localStorage.getItem("token");
@@ -24,10 +25,32 @@ export default function FavoritesPage() {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [photos, setPhotos] = useState({});
 
   useEffect(() => {
     fetchFavorites();
   }, []);
+
+  useEffect(() => {
+    trips.forEach((trip, index) => {
+      fetchPhoto(trip.destination, index);
+    });
+  }, [trips]);
+
+  async function fetchPhoto(query, index) {
+    if (!query || !PEXELS_KEY) return;
+    try {
+      const res = await fetch(
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1`,
+        { headers: { Authorization: PEXELS_KEY } }
+      );
+      const data = await res.json();
+      const url = data.photos?.[0]?.src?.landscape;
+      if (url) setPhotos((prev) => ({ ...prev, [index]: url }));
+    } catch {
+      // silently ignore
+    }
+  }
 
   async function fetchFavorites() {
     setLoading(true);
@@ -53,7 +76,6 @@ export default function FavoritesPage() {
 
   async function handleRemoveFavorite(tripId) {
     try {
-      // Toggle favorite off
       await fetch(`${API_URL}/trips/${tripId}/favorite`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${getToken()}` },
@@ -156,9 +178,20 @@ export default function FavoritesPage() {
           )}
 
           <div className="results-grid">
-            {trips.map((trip) => (
+            {trips.map((trip, index) => (
               <article className="tour-card" key={trip.id}>
-                <div className="tour-card-image" />
+                <div
+                  className="tour-card-image"
+                  style={
+                    photos[index]
+                      ? {
+                          backgroundImage: `url(${photos[index]})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                        }
+                      : {}
+                  }
+                />
 
                 <div className="tour-card-content">
                   <div className="tour-card-top">
@@ -181,7 +214,27 @@ export default function FavoritesPage() {
 
                   {trip.description && (
                     <p className="tour-description">{trip.description}</p>
+                    
                   )}
+
+                  {trip.weather && (
+  <p className="tour-weather">🌤 {trip.weather}</p>
+)}
+
+{trip.hotel && (
+  <p className="tour-hotel">🏨 {trip.hotel}</p>
+)}
+
+{trip.highlights && (
+  <div className="tour-highlights">
+    <strong>Top activities:</strong>
+    <ul>
+      {JSON.parse(trip.highlights).map((h, i) => (
+        <li key={i}>• {typeof h === "string" ? h : h.activity || ""}</li>
+      ))}
+    </ul>
+  </div>
+)}
 
                   <div className="tour-meta">
                     <div>

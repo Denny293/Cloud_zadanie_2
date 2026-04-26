@@ -404,3 +404,219 @@
     padding: 18px;
   }
 }
+
+.tour-weather {
+  margin: 8px 0;
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.tour-hotel {
+  margin: 6px 0 12px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tour-highlights {
+  margin: 0 0 14px;
+}
+
+.tour-highlights strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-black);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tour-highlights ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tour-highlights li {
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.tour-links {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tour-link-btn {
+  flex: 1;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  background: #f0fdf4;
+  border: 1.5px solid rgba(66, 192, 95, 0.35);
+  color: var(--color-primary-dark);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: 0.18s ease;
+}
+
+.tour-link-btn:hover {
+  background: rgba(66, 192, 95, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 192, 95, 0.2);
+}
+
+.tour-btn-danger {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1.5px solid rgba(225, 29, 72, 0.2);
+}
+
+.tour-btn-danger:hover {
+  background: #ffe4e6;
+}
+
+.loading-state,
+.empty-state,
+.error-banner {
+  padding: 32px;
+  border-radius: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.loading-state {
+  background: #f0fdf4;
+  color: var(--color-primary-dark);
+  font-weight: 600;
+}
+
+.empty-state {
+  background: #f8fafc;
+  color: var(--color-muted);
+}
+
+.error-banner {
+  background: #fff1f2;
+  color: #e11d48;
+  font-weight: 600;
+}
+
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+/* Card entrance animation */
+.tour-card {
+  animation: fadeInUp 0.4s ease both;
+}
+
+.tour-card:nth-child(1) { animation-delay: 0.05s; }
+.tour-card:nth-child(2) { animation-delay: 0.1s; }
+.tour-card:nth-child(3) { animation-delay: 0.15s; }
+.tour-card:nth-child(4) { animation-delay: 0.2s; }
+.tour-card:nth-child(5) { animation-delay: 0.25s; }
+
+.tour-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Image shimmer while loading */
+.tour-card-image {
+  position: relative;
+  overflow: hidden;
+}
+
+.tour-card-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.15) 50%,
+    transparent 100%
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+/* Loading pulse */
+.loading-state p {
+  animation: pulse 1.5s ease infinite;
+}
+
+/* Search button shine */
+.search-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.search-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.25),
+    transparent
+  );
+  transition: left 0.4s ease;
+}
+
+.search-btn:hover::after {
+  left: 140%;
+}
+
+/* Tag hover */
+.tour-tags span {
+  transition: background 0.18s ease, transform 0.18s ease;
+  cursor: default;
+}
+
+.tour-tags span:hover {
+  background: rgba(66, 192, 95, 0.15);
+  transform: translateY(-1px);
+}
+
+/* Navbar logo pulse on hover */
+.tours-logo {
+  transition: color 0.2s ease;
+}
+
+.tours-logo:hover {
+  color: var(--color-primary-dark);
+}

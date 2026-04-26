@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./assets/styles/App.css";
-
 import MainPage from "./assets/pages/MainPage";
 import AuthPage from "./assets/pages/AuthPage";
 import ToursPage from "./assets/pages/ToursPage";
@@ -15,6 +14,16 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+<Route 
+  path="/" 
+  element={
+    localStorage.getItem("token") 
+      ? <Navigate to="/tours" replace /> 
+      : <MainPage />
+  } 
+/>
+
+
         <Route path="/" element={<MainPage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route
@@ -33,6 +42,8 @@ function App() {
             </PrivateRoute>
           }
         />
+
+        
       </Routes>
     </BrowserRouter>
   );

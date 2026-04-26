@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/ToursPage.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const PEXELS_KEY = import.meta.env.VITE_PEXELS_API_KEY;
 
 function getToken() {
   return localStorage.getItem("token");
@@ -21,12 +22,13 @@ export default function ToursPage() {
   const navigate = useNavigate();
   const savedUser = getSavedUser();
 
-  // AI search form state
+  // Form state
+  const [startCity, setStartCity] = useState("");
   const [destination, setDestination] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [budget, setBudget] = useState("");
-  const [preferences, setPreferences] = useState("");
+  const [wishes, setWishes] = useState("");
 
   // Results state
   const [tours, setTours] = useState([]);
@@ -34,13 +36,36 @@ export default function ToursPage() {
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
 
-  // Favorites state (trip IDs saved in DB)
+  // Favorites & photos
   const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [photos, setPhotos] = useState({});
 
-  // On mount — load saved trips to know which are favorited
+  // Load favorites on mount
   useEffect(() => {
     fetchFavorites();
   }, []);
+
+  // Load photos when tours change
+  useEffect(() => {
+    tours.forEach((tour, index) => {
+      fetchPhoto(tour.image_query || tour.destination, index);
+    });
+  }, [tours]);
+
+  async function fetchPhoto(query, index) {
+    if (!query || !PEXELS_KEY) return;
+    try {
+      const res = await fetch(
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1`,
+        { headers: { Authorization: PEXELS_KEY } }
+      );
+      const data = await res.json();
+      const url = data.photos?.[0]?.src?.landscape;
+      if (url) setPhotos((prev) => ({ ...prev, [index]: url }));
+    } catch {
+      // silently ignore
+    }
+  }
 
   async function fetchFavorites() {
     try {
@@ -49,10 +74,7 @@ export default function ToursPage() {
       });
       if (!res.ok) return;
       const data = await res.json();
-      const favIds = new Set(
-        data.filter((t) => t.favorites).map((t) => t.id)
-      );
-      setFavoriteIds(favIds);
+      setFavoriteIds(new Set(data.filter((t) => t.favorites).map((t) => t.id)));
     } catch {
       // silently ignore
     }
@@ -70,19 +92,7 @@ export default function ToursPage() {
     setLoading(true);
     setSearched(true);
     setTours([]);
-
-    // Build prompt from form fields
-    const promptParts = [];
-    if (destination) promptParts.push(`destination: ${destination}`);
-    if (startDate) promptParts.push(`start date: ${startDate}`);
-    if (endDate) promptParts.push(`end date: ${endDate}`);
-    if (budget) promptParts.push(`budget: ${budget} EUR`);
-    if (preferences) promptParts.push(`preferences: ${preferences}`);
-
-    const prompt =
-      promptParts.length > 0
-        ? promptParts.join(", ")
-        : "Find me interesting random trips";
+    setPhotos({});
 
     try {
       const res = await fetch(`${API_URL}/ai/generate-trip`, {
@@ -92,13 +102,14 @@ export default function ToursPage() {
           Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({
-          prompt,
+          prompt: "Find me travel trips",
           preferences: {
+            startCity: startCity || null,
             destination: destination || null,
             startDate: startDate || null,
             endDate: endDate || null,
             budget: budget ? Number(budget) : null,
-            wishes: preferences || null,
+            wishes: wishes || null,
           },
         }),
       });
@@ -110,14 +121,7 @@ export default function ToursPage() {
         return;
       }
 
-      // Expect data.result to be array of trips or { trips: [] }
-      const result = data.result;
-      const tripList = Array.isArray(result)
-        ? result
-        : Array.isArray(result?.trips)
-        ? result.trips
-        : [];
-
+      const tripList = Array.isArray(data.result) ? data.result : [];
       setTours(tripList);
     } catch {
       setError("Could not connect to server.");
@@ -135,7 +139,7 @@ export default function ToursPage() {
           Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({
-          start: tour.start || "Unknown",
+          start: tour.start || startCity || "Unknown",
           destination: tour.destination,
           startDate: tour.startDate,
           finishDate: tour.finishDate,
@@ -143,17 +147,21 @@ export default function ToursPage() {
           description: tour.description || "",
           flightLink: tour.flightLink || null,
           stayLink: tour.stayLink || null,
+          weather: tour.weather || null,
+          hotel: typeof tour.hotel === "string" ? tour.hotel : tour.hotel?.name || null,
+          highlights: tour.highlights 
+  ? tour.highlights.map(h => 
+      typeof h === "string" 
+        ? h.replace(/[\x00-\x1F\x7F]/g, " ").trim()
+        : (h.activity || "").replace(/[\x00-\x1F\x7F]/g, " ").trim()
+    )
+  : null,
         }),
       });
 
       const data = await res.json();
+      if (!res.ok) { alert(data.message || "Could not save trip."); return; }
 
-      if (!res.ok) {
-        alert(data.message || "Could not save trip.");
-        return;
-      }
-
-      // Mark as favorite immediately after saving
       const newTripId = data.trip.id;
       await fetch(`${API_URL}/trips/${newTripId}/favorite`, {
         method: "PATCH",
@@ -167,7 +175,7 @@ export default function ToursPage() {
     }
   }
 
-  const email = savedUser
+  const displayName = savedUser
     ? `${savedUser.firstname} ${savedUser.lastname}`
     : "Guest";
 
@@ -178,28 +186,20 @@ export default function ToursPage() {
           <div className="tours-logo" onClick={() => navigate("/")}>
             TravelFlow
           </div>
-
           <div className="tours-navbar-actions">
-            <button
-              className="nav-icon-btn"
-              type="button"
-              onClick={() => navigate("/favorites")}
-            >
+            <button className="nav-icon-btn" type="button" onClick={() => navigate("/favorites")}>
               ♡ <span>Favorites</span>
             </button>
-
             <div className="user-pill">
               <span className="user-dot" />
-              <span>{email}</span>
+              <span>{displayName}</span>
             </div>
-
             <button className="logout-btn" type="button" onClick={handleLogout}>
               Sign Out
             </button>
           </div>
         </header>
 
-        {/* Search Section */}
         <section className="search-section">
           <div className="search-top">
             <p className="section-badge">AI-powered search</p>
@@ -213,18 +213,29 @@ export default function ToursPage() {
           <form className="search-panel" onSubmit={handleSearch}>
             <div className="filters-grid">
               <div className="filter-field">
-                <label htmlFor="destination">Destination</label>
+                <label htmlFor="startCity">From</label>
+                <input
+                  id="startCity"
+                  type="text"
+                  value={startCity}
+                  onChange={(e) => setStartCity(e.target.value)}
+                  placeholder="e.g. Vienna, Bratislava..."
+                />
+              </div>
+
+              <div className="filter-field">
+                <label htmlFor="destination">To</label>
                 <input
                   id="destination"
                   type="text"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  placeholder="e.g. Barcelona, Japan, anywhere..."
+                  placeholder="e.g. Tokyo, Barcelona, anywhere..."
                 />
               </div>
 
               <div className="filter-field">
-                <label htmlFor="startDate">Start date</label>
+                <label htmlFor="startDate">Departure date</label>
                 <input
                   id="startDate"
                   type="date"
@@ -234,7 +245,7 @@ export default function ToursPage() {
               </div>
 
               <div className="filter-field">
-                <label htmlFor="endDate">End date</label>
+                <label htmlFor="endDate">Return date</label>
                 <input
                   id="endDate"
                   type="date"
@@ -257,12 +268,12 @@ export default function ToursPage() {
             </div>
 
             <div className="prompt-field">
-              <label htmlFor="preferences">Wishes (optional)</label>
+              <label htmlFor="wishes">Wishes (optional)</label>
               <input
-                id="preferences"
+                id="wishes"
                 type="text"
-                value={preferences}
-                onChange={(e) => setPreferences(e.target.value)}
+                value={wishes}
+                onChange={(e) => setWishes(e.target.value)}
                 placeholder="e.g. beach, history, adventure, family-friendly..."
               />
             </div>
@@ -273,7 +284,6 @@ export default function ToursPage() {
           </form>
         </section>
 
-        {/* Results Section */}
         {searched && (
           <section className="results-section">
             <div className="results-head">
@@ -283,11 +293,7 @@ export default function ToursPage() {
               </div>
             </div>
 
-            {error && (
-              <div className="error-banner">
-                <p>{error}</p>
-              </div>
-            )}
+            {error && <div className="error-banner"><p>{error}</p></div>}
 
             {loading && (
               <div className="loading-state">
@@ -304,17 +310,54 @@ export default function ToursPage() {
             <div className="results-grid">
               {tours.map((tour, index) => (
                 <article className="tour-card" key={index}>
-                  <div className="tour-card-image" />
+                  <div
+                    className="tour-card-image"
+                    style={
+                      photos[index]
+                        ? {
+                            backgroundImage: `url(${photos[index]})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : {}
+                    }
+                  />
 
                   <div className="tour-card-content">
                     <div className="tour-card-top">
                       <div>
-                        <p className="tour-location">{tour.destination}</p>
+                        <p className="tour-location">
+                          {tour.start} → {tour.destination}
+                        </p>
                         <h3>{tour.title || tour.destination}</h3>
                       </div>
                     </div>
 
                     <p className="tour-description">{tour.description}</p>
+
+                    {tour.weather && (
+                      <p className="tour-weather">🌤 {tour.weather}</p>
+                    )}
+
+                    {tour.hotel && (
+                      <p className="tour-hotel">
+                        🏨{" "}
+                        {typeof tour.hotel === "string"
+                          ? tour.hotel
+                          : tour.hotel.name || ""}
+                      </p>
+                    )}
+
+                    {tour.highlights && tour.highlights.length > 0 && (
+                      <div className="tour-highlights">
+                        <strong>Top activities:</strong>
+                        <ul>
+                          {tour.highlights.map((h, i) => (
+                            <li key={i}>• {typeof h === "string" ? h : h.activity || JSON.stringify(h)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                     {tour.tags && (
                       <div className="tour-tags">
@@ -334,45 +377,31 @@ export default function ToursPage() {
                       {tour.startDate && (
                         <div>
                           <strong>{tour.startDate}</strong>
-                          <span>start date</span>
+                          <span>departure</span>
                         </div>
                       )}
                       {tour.finishDate && (
                         <div>
                           <strong>{tour.finishDate}</strong>
-                          <span>end date</span>
+                          <span>return</span>
                         </div>
                       )}
                     </div>
 
                     <div className="tour-links">
                       {tour.flightLink && (
-                        <a
-                          href={tour.flightLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="tour-link-btn"
-                        >
+                        <a href={tour.flightLink} target="_blank" rel="noopener noreferrer" className="tour-link-btn">
                           ✈ Flights
                         </a>
                       )}
                       {tour.stayLink && (
-                        <a
-                          href={tour.stayLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="tour-link-btn"
-                        >
+                        <a href={tour.stayLink} target="_blank" rel="noopener noreferrer" className="tour-link-btn">
                           🏨 Hotels
                         </a>
                       )}
                     </div>
 
-                    <button
-                      className="tour-btn"
-                      type="button"
-                      onClick={() => handleSaveTrip(tour)}
-                    >
+                    <button className="tour-btn" type="button" onClick={() => handleSaveTrip(tour)}>
                       ♡ Save to Favorites
                     </button>
                   </div>
