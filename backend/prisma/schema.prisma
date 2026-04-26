@@ -29,6 +29,9 @@ model Trip {
   favorites   Boolean  @default(false)
   flightLink  String?  @map("flight_link")
   stayLink    String?  @map("stay_link")
+  weather     String?
+  hotel       String?
+  highlights  String?
   createdAt   DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

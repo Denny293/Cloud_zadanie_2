@@ -12,6 +12,9 @@ const parseTripData = (body) => {
     description,
     flightLink,
     stayLink,
+    weather,
+    hotel,
+    highlights,
   } = body;
 
   return {
@@ -23,6 +26,9 @@ const parseTripData = (body) => {
     description,
     flightLink,
     stayLink,
+    weather,
+    hotel,
+    highlights: highlights ? JSON.stringify(highlights) : null,
   };
 };
 
@@ -41,9 +47,9 @@ const validateTripData = (tripData) => {
     return "startDate and finishDate must be valid dates";
   }
 
-  if (Number.isNaN(parsedPrice) || !Number.isInteger(parsedPrice) || parsedPrice < 0) {
-    return "price must be a non-negative integer";
-  }
+if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+  return "price must be a non-negative number";
+}
 
   if (parsedFinishDate < parsedStartDate) {
     return "finishDate must be greater than or equal to startDate";
@@ -65,10 +71,13 @@ const mapTripDataForDb = (tripData) => ({
   destination: tripData.destination,
   startDate: new Date(tripData.startDate),
   finishDate: new Date(tripData.finishDate),
-  price: Number(tripData.price),
+  price: Math.round(Number(tripData.price)),
   description: tripData.description || null,
   flightLink: tripData.flightLink || null,
   stayLink: tripData.stayLink || null,
+  weather: tripData.weather || null,
+hotel: tripData.hotel || null,
+highlights: tripData.highlights || null,
 });
 
 const getTrips = async (req, res) => {
@@ -130,7 +139,8 @@ const createTrip = async (req, res) => {
       trip,
     });
   } catch (error) {
-    return res.status(500).json({ message: "Server error" });
+      console.error("Create trip error:", error);
+  return res.status(500).json({ message: error.message });
   }
 };
 

@@ -10,14 +10,16 @@ const generateTripSuggestion = async (req, res) => {
 
     const result = await generateTrip({
       prompt: prompt.trim(),
-      preferences,
+      preferences: preferences || {},
     });
 
     return res.status(200).json({
       message: "AI trip generated successfully",
-      result,
+      result: result.trips,
     });
   } catch (error) {
+    console.error("AI error:", error);
+
     if (error.statusCode) {
       return res.status(error.statusCode).json({
         message: "AI provider error",
@@ -29,6 +31,4 @@ const generateTripSuggestion = async (req, res) => {
   }
 };
 
-module.exports = {
-  generateTripSuggestion,
-};
+module.exports = { generateTripSuggestion };
