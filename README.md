@@ -62,17 +62,17 @@ User Browser
 ┌─────────────────────────────────────────────────┐
 │         Azure Container Apps Environment        │
 │                                                 │
-│  ┌──────────────┐       ┌───────────────────┐  │
-│  │   frontend   │──────▶│     backend       │  │
-│  │  (external)  │ HTTP  │    (internal)     │  │
-│  │  nginx:80    │       │  Node.js:5000     │  │
-│  └──────────────┘       └────────┬──────────┘  │
+│  ┌──────────────┐       ┌───────────────────┐   │
+│  │   frontend   │──────▶│     backend       │   │
+│  │  (external)  │ HTTP  │    (internal)     │   │
+│  │  nginx:80    │       │  Node.js:5000     │   │
+│  └──────────────┘       └────────┬──────────┘   │
 │                                  │              │
 └──────────────────────────────────│──────────────┘
                      ┌─────────────┤
                      │             │ Federated token
           SSL :5432  │             ▼
-   ┌─────────────────┴───┐  ┌──────────────────────────┐
+   ┌─────────────────┴────┐  ┌──────────────────────────┐
    │  Azure Database      │  │  Vertex AI Agent Engine  │
    │  for PostgreSQL      │  │  GCP — us-west1          │
    │  Flexible Server     │  └─────────────┬────────────┘
@@ -80,8 +80,8 @@ User Browser
    │  • users table       │  ┌─────────────▼────────────┐
    │  • trips table       │  │  MCP Server (Cloud Run)  │
    └──────────────────────┘  │  europe-west1            │
-                              │  FastMCP + RapidAPI      │
-                              └──────────────────────────┘
+                             │  FastMCP + RapidAPI      │
+                             └──────────────────────────┘
 ```
 
 ---
