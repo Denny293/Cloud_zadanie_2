@@ -333,7 +333,7 @@ Click your **profile icon** in the top right → **Log Out**.
 |---|---|
 | **Potapov** | AI Agent configuration (Vertex AI Agent Engine, Gemini prompt design) · MCP server implementation (FastMCP tools, RapidAPI integration) · Workload Identity Federation setup · Docker image build · Azure Container Apps deployment · PostgreSQL setup on Azure |
 | **[Member 2]** | Backend development (Express API, JWT authentication, Prisma schema and migrations) · PostgreSQL setup on Azure |
-| **[Member 3]** | Frontend development (React components, trip results UI, Pexels integration) |
+| **[Member 3]** | Frontend development (React components, trip results UI) |
 
 ---
 
