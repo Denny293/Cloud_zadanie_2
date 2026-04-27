@@ -291,11 +291,9 @@ export default function ToursPage() {
                     )}
 
                     {/* Tags */}
-                    {tour.tags && (
+                    {tour.flightSummary && tour.flightSummary !== "No flights found" && (
                       <div className="tour-tags">
-                        {tour.tags.map((tag) => (
-                          <span key={tag}>{tag}</span>
-                        ))}
+                        <span>✈ {tour.flightSummary}</span>
                       </div>
                     )}
 
