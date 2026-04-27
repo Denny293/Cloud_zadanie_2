@@ -8,7 +8,7 @@ from google.adk.tools import agent_tool
 from google.adk.tools.google_search_tool import GoogleSearchTool
 from google.adk.tools import url_context
 
-PROJECT = "project-38c8b171-74f0-49bd-bee"
+PROJECT = "project-38c8b171"
 LOCATION = "us-west1"
 
 vertexai.init(project=PROJECT, location=LOCATION)
