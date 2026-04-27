@@ -315,17 +315,6 @@ Click **My Trips** in the navigation bar. All saved combinations are listed here
 
 Click your **profile icon** in the top right → **Log Out**.
 
-### ⚠️ Troubleshooting
-
-| Problem | Cause | Fix |
-|---|---|---|
-| Search spins > 60s | Vertex AI timeout or RapidAPI quota hit | Refresh and retry · check API quotas |
-| "Unauthorized" error | JWT token expired | Log out and log back in |
-| No results returned | Destination not recognised or no flights for those dates | Try a nearby major city or different dates |
-| Booking link won't open | Pop-up blocker active | Allow pop-ups for the TravelFlow domain |
-
----
-
 ## 👥 Team Contributions
 
 | Member | Contributions |
