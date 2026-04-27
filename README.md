@@ -287,8 +287,7 @@ Fill in the search form:
 | Departure city | ✅ | `Vienna, Austria` |
 | Departure date | ✅ | `2025-08-01` |
 | Return date | ✅ | `2025-08-14` |
-| Budget (EUR) | ❌ | `1500` |
-| Preferences | ❌ | `non-stop flights, 4-star hotels near centre` |
+
 
 Click **Find Trips**. The AI agent queries live data — expect **15–30 seconds**. Do not refresh while loading.
 
