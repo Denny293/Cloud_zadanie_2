@@ -54,48 +54,17 @@ function buildTripPrompt({ preferences }) {
   const startDate = preferences?.startDate || "flexible";
   const endDate = preferences?.endDate || "flexible";
   const budget = preferences?.budget ? `${preferences.budget} EUR` : "flexible";
-  const wishes = preferences?.wishes || "no specific preferences";
+  const wishes = preferences?.wishes || "";
 
-return `You are a travel recommendation assistant.
+  let prompt = `I want to go from ${from} to ${to}`;
+  
+  if (startDate !== "flexible") prompt += ` on ${startDate}`;
+  if (endDate !== "flexible") prompt += ` returning on ${endDate}`;
+  if (budget !== "flexible") prompt += `, budget up to ${budget}`;
+  if (wishes) prompt += `, preferences: ${wishes}`;
 
-Generate exactly 5 travel package recommendations for the following trip:
-- From: ${from}
-- To: ${to}
-- Departure date: ${startDate}
-- Return date: ${endDate}
-- Max budget per person: ${budget}
-- Preferences: ${wishes}
-
-IMPORTANT RULES:
-- Do NOT search for real flights or hotels
-- Generate realistic travel packages with estimated prices
-- Always include return trip back to ${from}
-- Each package should be a different option
-
-You MUST respond with ONLY a valid JSON array. No text before or after. No markdown.
-
-[
-  {
-    "title": "Trip title",
-    "destination": "City, Country",
-    "start": "${from}",
-    "startDate": "YYYY-MM-DD",
-    "finishDate": "YYYY-MM-DD",
-    "price": 1200,
-    "description": "Short description in 1-2 sentences.",
-    "tags": ["tag1", "tag2"],
-    "hotel": "Name of recommended hotel",
-    "weather": "Expected weather, e.g. sunny 24°C",
-    "highlights": ["Activity 1", "Activity 2", "Activity 3"],
-    "image_query": "unique search query combining destination and trip theme/category",
-    "flightLink": "https://www.google.com/flights",
-    "stayLink": "https://www.booking.com"
-  }
-]
-
-Respond with ONLY the JSON array. Nothing else.`;
+  return prompt;
 }
-
 // Mirrors the Python query_agent() function
 async function queryAgent(message) {
   const token = await getGCPToken();
@@ -148,46 +117,60 @@ async function queryAgent(message) {
   return result.join("\n");
 }
 
-function parseTrips(rawText) {
+function parseTrips(rawText, preferences) {
   if (!rawText) return [];
-  const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) return [];
-  try {
-    const parsed = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(parsed)) return [];
 
-    return parsed.slice(0, 5).map((item) => ({
-      title: item.title || item.category || `Option ${item.option_id}`,
-      destination: item.destination || "Unknown",
-      start: item.start || item.flight?.origin || "Unknown",
-      startDate: item.startDate || item.flight?.departure_time?.split("T")[0] || "",
-      finishDate: item.finishDate || item.flight?.arrival_time?.split("T")[0] || "",
-      price: item.price || parseInt(item.total_estimated_cost) || 0,
-      description: item.description || item.flight?.summary || "",
-      tags: item.tags || [item.category || "travel"],
-      hotel: typeof item.hotel === "string" ? item.hotel : item.hotel?.name || "",
-      weather: item.weather || "",
-      highlights: item.highlights || item.activities || [],
-      flightLink: item.flightLink || "https://www.google.com/flights",
-      stayLink: item.stayLink || "https://www.booking.com",
-    }));
+  const cleaned = rawText.replace(/```json|```/g, "").trim();
+  const travelOptionsMatch = cleaned.match(/\{[\s\S]*"travel_options"[\s\S]*\}/);
+  if (!travelOptionsMatch) return [];
+
+  let options;
+  try {
+    const parsed = JSON.parse(travelOptionsMatch[0]);
+    options = parsed.travel_options;
+    if (!Array.isArray(options) || options.length === 0) return [];
   } catch {
     return [];
   }
+
+  const fallbackFlightLink = `https://www.google.com/travel/flights?q=Flights+to+${preferences?.destination}+from+${preferences?.startCity}+on+${preferences?.startDate}+returning+${preferences?.endDate}`;
+
+  return options.slice(0, 5).map((item) => {
+    const flight = item.flight || {};
+    const hotel = item.hotel || {};
+
+    return {
+      // Original fields — names unchanged
+      title: `${item.category} — ${hotel.name || ""}`,
+      destination: preferences?.destination || "Unknown",
+      start: preferences?.startCity || "Unknown",
+      startDate: hotel.check_in_date || "",
+      finishDate: hotel.check_out_date || "",
+      price: Math.round(parseFloat(item.total_estimated_cost) || 0),
+      description: hotel.description || "",
+      tags: [item.category],
+      hotel: hotel.name || "",
+      highlights: [hotel.description || ""],
+      flightLink: flight.booking_link || fallbackFlightLink,
+      stayLink: hotel.booking_link || "https://www.booking.com",
+
+      // New fields for previously unparsed variables
+      optionId: item.option_id ?? null,
+      category: item.category || "Unknown",
+      flightSummary: flight.summary || "",
+      flightDeparture: flight.departure_time || "",
+      flightArrival: flight.arrival_time || "",
+      hotelActivities: hotel.activities || "",
+    };
+  });
 }
 
 const generateTrip = async ({ preferences }) => {
   const message = buildTripPrompt({ preferences });
   const rawText = await queryAgent(message);
-  const trips = parseTrips(rawText).map(trip => ({
-    ...trip,
-    start: trip.start && trip.start !== "Unknown" 
-      ? trip.start 
-      : (preferences?.startCity || "Unknown"),
-    destination: trip.destination && trip.destination !== "Unknown" 
-      ? trip.destination 
-      : (preferences?.destination || "Unknown"),
-  }));
+  console.log("RAW TEXT FROM GCP:", rawText.substring(0, 500));
+  const trips = parseTrips(rawText, preferences);
   return { trips, raw: rawText };
 };
+
 module.exports = { generateTrip };
