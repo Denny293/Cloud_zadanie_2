@@ -14,6 +14,15 @@
 </div>
 
 ---
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/b8e86f1c-e0a6-43db-b579-e007b6e0d4f4" alt="Screenshot 1" width="85%" />
+</p>
+
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/94d21301-e399-4ed8-96e5-7b5382629bd1" alt="Screenshot 2" width="75%" />
+</p>
+
 
 ## 📖 Overview
 
